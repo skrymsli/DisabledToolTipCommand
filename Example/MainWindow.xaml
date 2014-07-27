@@ -1,0 +1,24 @@
+﻿<Window x:Class="DisabledCommandToolTips.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:implbits="clr-namespace:Implbits;assembly=Implbits.DisabledToolTipCommand"
+        Title="MainWindow" Height="350" Width="525">
+    <StackPanel>
+        <TextBox x:Name="Parameter" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"></TextBox>
+        
+        <Button Content="Dynamic Reason" 
+                Command="{Binding ReactiveCommand}" 
+                CommandParameter="{Binding Text}"
+                ToolTip="Click here for fun!"
+                implbits:DisabledCommandTooltip.Enable="True" Margin="0,10">            
+        </Button>
+       
+        <Button Content="Static Reason" 
+                Command="{Binding MyCommand}" 
+                CommandParameter="{Binding Text}"
+                ToolTip="Click here for fun!"
+                implbits:DisabledCommandTooltip.Enable="true">
+        </Button>
+
+    </StackPanel>
+</Window>
