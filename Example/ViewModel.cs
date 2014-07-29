@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,15 +14,20 @@ namespace DisabledCommandToolTips
 {
     public class ViewModel : ReactiveObject
     {
+
         #region Command: ReactiveCommand
-        private IXCommand _command;
-        public IXCommand ReactiveCommand
+        private ICommand _command;
+        public ICommand ReactiveCommand
         {
             get
             {
                 if (_command != null) return _command;
-                var canExecute = this.WhenAny(x => x.Text, x => TextIsOkay(x.GetValue()));
-                ReactiveCommand<object> reactiveCommand = ReactiveUI.ReactiveCommand.Create(canExecute);
+                var obsText = this.WhenAny(x => x.Text, x => TextIsOkay(x.GetValue()));
+                var obsDisableAll = this.WhenAnyValue(x => x.DisableAll);
+                var obsDisableDynamic = this.WhenAnyValue(x => x.DisableDynamic);
+                var canExecute = obsText.CombineLatest(obsDisableAll, obsDisableDynamic, (x, y, z) => x && !y && !z);
+
+                var reactiveCommand = ReactiveUI.ReactiveCommand.Create(canExecute);
                 reactiveCommand.Subscribe(x => MessageBox.Show(string.Format("ReactiveCommand executed: {0}", x)));
                 _command = reactiveCommand.WithDisabledTooltip(DisabledReason);
                 return _command;
@@ -29,27 +35,18 @@ namespace DisabledCommandToolTips
         }
         #endregion
 
-        #region Command: MyCommand
-        private readonly IXCommand _myCommand = new MyCommand().WithDisabledTooltip("The text is not valid.");
-        public IXCommand MyCommand
+        #region Command: SomeCommand
+
+        private ICommand _someCommand;
+        public ICommand SomeCommand
         {
-            get { return _myCommand; }
+            get
+            {
+                if(_someCommand != null) return _someCommand;
+                return (_someCommand = new SomeCommand(this).WithDisabledTooltip("Sorry, can't execute right now."));
+            }
         }
         #endregion
-
-        string DisabledReason(object parameter)
-        {
-            var text = parameter as string;
-            if (string.IsNullOrWhiteSpace(text)) return "No value specified.";
-            if (text == "blah") return "Text is too boring";
-            if (text == "hi") return "Text is too friendly";
-            return null;
-        }
-
-        bool TextIsOkay(string text)
-        {
-            return !string.IsNullOrWhiteSpace(text) && text != "blah" && text != "hi";
-        }
 
         #region Property Text
         private string _text = default(string);
@@ -60,25 +57,37 @@ namespace DisabledCommandToolTips
         }
         #endregion
 
+        #region Property DisableDynamic
+        private bool _disableDynamic = default(bool);
+        public bool DisableDynamic
+        {
+            get { return _disableDynamic; }
+            set { this.RaiseAndSetIfChanged(ref _disableDynamic, value); }
+        }
+        #endregion
+
+        #region Property DisableAll
+        private bool _disableAll = default(bool);
+        public bool DisableAll
+        {
+            get { return _disableAll; }
+            set { this.RaiseAndSetIfChanged(ref _disableAll, value); }
+        }
+        #endregion
+
+        private string DisabledReason(object parameter)
+        {
+            if (DisableAll) return "All commands are disabled right now.";
+            if (DisableDynamic) return "This is a dynamic disabled tooltip command and those are disabled right now.";
+            if (!TextIsOkay(parameter as string)) return "You need to enter some text.";
+            return null;
+        }
+
+        private static bool TextIsOkay(string text)
+        {
+            return !string.IsNullOrWhiteSpace(text);
+        }
     }
 
-    class MyCommand : ICommand
-    {
-
-        public bool CanExecute(object parameter)
-        {
-            return !string.IsNullOrEmpty(parameter as string);
-        }
-
-        public event EventHandler CanExecuteChanged
-        {
-            add { CommandManager.RequerySuggested += value; }
-            remove { CommandManager.RequerySuggested -= value; }
-        }
-
-        public void Execute(object parameter)
-        {
-            MessageBox.Show(string.Format("MyCommand executed: {0}", parameter));
-        }
-    }
+    
 }

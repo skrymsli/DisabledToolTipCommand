@@ -5,12 +5,13 @@ using System.Windows.Input;
 
 namespace Implbits
 {
-    public interface IXCommand : ICommand
+    public interface IDisabledReasonCommand : ICommand
     {
         string Reason { get; }
+        void UpdateReason(object parameter);
     }
 
-    public class XCommand : IXCommand, INotifyPropertyChanged
+    public class DisabledReasonCommand : IDisabledReasonCommand, INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
         public event EventHandler CanExecuteChanged;
@@ -18,7 +19,7 @@ namespace Implbits
         protected ICommand WrappedCommand { get; set; }
         private readonly Func<object, string> _reasonCallback;
 
-        public XCommand(ICommand toWrap, Func<object, string> reasonCallback)
+        public DisabledReasonCommand(ICommand toWrap, Func<object, string> reasonCallback)
         {
             WrappedCommand = toWrap;
             _reasonCallback = reasonCallback;
@@ -30,11 +31,16 @@ namespace Implbits
             CanExecuteChanged(sender, e);
         }
 
-        public XCommand(ICommand toWrap, string reason)
+        public DisabledReasonCommand(ICommand toWrap, string reason)
         {
             WrappedCommand = toWrap;
             _reasonCallback = x=>reason;
             WrappedCommand.CanExecuteChanged +=WrappedCommand_CanExecuteChanged;
+        }
+
+        public void UpdateReason(object parameter)
+        {
+            CanExecute(parameter);
         }
 
         private string _reason;
@@ -66,22 +72,19 @@ namespace Implbits
         {
             if (PropertyChanged != null)
                 PropertyChanged(this, new PropertyChangedEventArgs(property));
-        }
-
-
-        
+        }        
     }
 
     public static class CommandExtensions
     {
-        public static IXCommand WithDisabledTooltip(this ICommand command, Func<object,string> reasonCallback)
+        public static ICommand WithDisabledTooltip(this ICommand command, Func<object,string> reasonCallback)
         {
-            return new XCommand(command, reasonCallback);
+            return new DisabledReasonCommand(command, reasonCallback);
         }
 
-        public static IXCommand WithDisabledTooltip(this ICommand command, string reason)
+        public static ICommand WithDisabledTooltip(this ICommand command, string reason)
         {
-            return new XCommand(command, reason);
+            return new DisabledReasonCommand(command, reason);
         }
     }
 

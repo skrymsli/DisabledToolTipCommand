@@ -85,23 +85,29 @@ namespace Implbits
             WatchRegistrations.Add(element, subscription);
         }
 
-
         static void ConfigureDisabledTooltip(FrameworkElement element)
         {
             var cs = element as ICommandSource;
             if(cs == null) 
                 throw new ArgumentException("DisabledCommandTooltip set on non-CommandSource element: " + element);
 
-            var ixcommand = cs.Command as IXCommand;
+            var ixcommand = cs.Command as IDisabledReasonCommand;
             if (ixcommand == null)
             {
-                throw new ArgumentException("DisabledCommandTooltip.EnableDynamic is true, but command is not derived from IXCommand.");    
+                throw new ArgumentException("DisabledCommandTooltip.EnableDynamic is true, but command is not derived from IDisabledReasonCommand.");    
             }
 
             ToolTipService.SetShowOnDisabled(element, true);
+            
             SetDefaultToolTip(element, element.ToolTip ?? ToolTipService.GetToolTip(element));
-            UpdateTooltip(element, ixcommand.Reason);
+
             ixcommand.CanExecuteChanged += (s, e) => UpdateTooltip(element,ixcommand.Reason);
+
+            element.ToolTipOpening += (s, e) =>
+            {
+                ixcommand.UpdateReason(cs.CommandParameter);
+                UpdateTooltip(element, ixcommand.Reason);
+            };
         }
 
         static void UpdateTooltip(FrameworkElement element, string reason)
